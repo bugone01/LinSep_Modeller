@@ -1,74 +1,86 @@
 graphLib = {}
 
 
-function graphLib.newGraph( graphPoints, xScale, yScale )
+function graphLib.newGraph( graphPoints, alpha, xMin, xMax, yMin, yMax )
 	-----------------------------------------------------------------------------------
 	-- Returns a graphGroup with X and Y axis and the 'graphPoints' plotted. 
 	-- Scale should be a number between 
 	-----------------------------------------------------------------------------------
 	local graphGroup = display.newGroup()
 	
+	-- set default scale
+	local xMin = xMin or -10
+	local xMax = xMax or 10
+	local yMin = yMin or -10
+	local yMax = yMax or 10
 	
-	-- Dividing the Xincrement and Yincrements by 2 will quarter the graph size,
-	-- this could be used to scale and add multiple graphs to a single scene
-	local Xincrement = display.contentWidth /23
-	local Yincrement = display.contentHeight /28 -- leave additional space at bottom for tab bar.
-	local Xmin = Xincrement *1
-	local Xmax = Xincrement *22 -- one space on left + 21 increments (including 0)
-	local Ymin = Yincrement *22 -- Corona co-ordinates go top to bottom
-	local Ymax = Yincrement *1
-	local Xzero = Xincrement *11.5 -- 1 space at top + 11 increments (including 0)
-	local Yzero = Yincrement *11.5
+	local alpha = alpha or 1
+	
+	-- calculate some constants
+	------------------------------------------------------------------------------------------------
+	-- calculate how many increments are between min and max (including 1 increment for zero position). 
+	xTotalIncrements = 0-xMin+xMax +1
+	yTotalIncrements = 0-yMin+yMax +1
+		
+	-- Define the graph border
+	local xBorderWidth = display.contentWidth /23 *1
+	local yTopBorder = display.contentHeight /28 *1
+	local yBottomBorder = display.contentHeight /28 *22 -- Remember: co-ordinates work from top to bottom
+	
+	-- Divide the viewable area into increments
+	local xInc = (display.contentWidth - xBorderWidth*2) /xTotalIncrements 
+	local yInc = (yBottomBorder - yTopBorder) / yTotalIncrements
+	
+	local xZero = (xTotalIncrements - 0.5 - xMax)*xInc + xBorderWidth -- These points may be off screen
+	local yZero = yBottomBorder - (yTotalIncrements - 0.5 - yMax)*yInc-- These points may be off screen
+	------------------------------------------------------------------------------------------------
 
 	-- create the axis for the graph
-	local Xaxis = display.newLine( graphGroup, Xmin, Yzero, Xmax, Yzero) 
-	Xaxis:setStrokeColor( 0, 255, 255 ) -- this is wrong !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	Xaxis.strokeWidth = 2
-	local Yaxis = display.newLine( graphGroup, Xzero, Ymin, Xzero, Ymax)
-	Yaxis:setStrokeColor( 0, 160, 160 ) 
-	Yaxis.strokeWidth = 2
+	axisColor = { .44,.82,.94 } --Cyan
 	
-	--[[
-	print( "X zero", Xzero)
-	print( "Display content width", display.contentWidth )	
-	-- some dots to test the layout.
-	local minDot = display.newCircle( graphGroup, Xmin, Ymin, 3)
-	minDot:setFillColor( 1, 0, 0) -- red
-	local XmaxDot = display.newCircle( graphGroup, Xmax, Ymin, 3)
-	XmaxDot:setFillColor( 0, 0, 1 ) -- Blue
-	local YmaxDot = display.newCircle( graphGroup, Xmin, Ymax, 3)
-	YmaxDot:setFillColor( 0, 1, 0 ) -- green
-	--]]
+	local xAxis = display.newLine( graphGroup, xBorderWidth, yZero, display.contentWidth - xBorderWidth, yZero) 
+	xAxis:setStrokeColor( unpack( axisColor ) ) -- this is wrong !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	xAxis.strokeWidth = 2
+	local yAxis = display.newLine( graphGroup, xZero, yTopBorder, xZero, yBottomBorder)
+	yAxis:setStrokeColor( unpack( axisColor ) ) 
+	yAxis.strokeWidth = 2
 	
-	-- Add increment lines to Y-axis
+	-- add increment marks to axis
 	local halfLength = 4
-	local incPos = 0
-	for i=-10, 10 do
-		incPos =  i * Yincrement + Yzero
-		display.newLine( graphGroup, Xzero-halfLength, incPos, Xzero+halfLength, incPos )
+	local incPos
+	local marker
+	-- X-axis
+	for i=xMin, xMax do
+		incPos = xZero + i * xInc
+		marker = display.newLine( graphGroup, incPos, yZero-halfLength, incPos, yZero+halfLength )
+		marker:setStrokeColor( unpack( axisColor ) )
+	end	
+	-- Y-axis
+	for i=yMin, yMax do
+		incPos =  yZero - (i * yInc) -- '-i' because co-ordinates go from top to bottom
+		marker = display.newLine( graphGroup, xZero-halfLength, incPos, xZero+halfLength, incPos )
+		marker:setStrokeColor( unpack( axisColor ) )
 	end
 	
-	-- Add increment lines to X-axis
-	for i=-10, 10 do
-		incPos = i * Xincrement + Xzero
-		display.newLine( graphGroup, incPos, Yzero-halfLength, incPos, Yzero+halfLength )
-	end
-	
-	-- Add points to the graph
+	-- Plot the points on the graph
 	local radius = 3
-	for _, points in ipairs( graphPoints ) do
-		local point = display.newCircle( graphGroup,
-			points[1] * Xincrement + Xzero,
-			-points[2] * Yincrement + Yzero, -- inverse the Y-axis as Corona co-ordinates work from top to bottom.
-			radius
-		)
-		if points[3] == 'M' then
-			point:setFillColor( 0, 0.3, 0.9 ) -- blue
-		elseif points[3] == 'B' then
-			point:setFillColor( 255, 0, 0 ) -- red
-		else
-			point:setFillColor( 0.3, .8, 0 ) -- green
-		end	
+	local x
+	local y
+	for _, point in ipairs( graphPoints ) do
+		x = point[1] * xInc + xZero
+		y = -point[2] * yInc + yZero -- inverse the Y-axis as Corona co-ordinates work from top to bottom.
+		-- only plot points which are within the graph borders
+		if x > xBorderWidth and x < display.contentWidth - xBorderWidth and y > yTopBorder and y < yBottomBorder then
+			local dot = display.newCircle( graphGroup, x, y, radius )
+			
+			if point[3] == 'M' then
+				dot:setFillColor( 0, 0.3, 0.9, alpha ) -- blue
+			elseif point[3] == 'B' then
+				dot:setFillColor( 255, 0, 0, alpha ) -- red
+			else
+				dot:setFillColor( 0.3, .8, 0, alpha ) -- green
+			end
+		end
 	end
 	
 	return graphGroup;
