@@ -1,16 +1,18 @@
 formulas = {}
 
 function formulas.yDouble( dataSets )
-
+	local returnSets = {}
 	for i=1, #dataSets do
-		for x=2, 2 do
-			--print( "Before value", dataSets[i][x])
-			dataSets[i][x] = dataSets[i][x] *2
-			--print( "After value", dataSets[i][x])
-		end
+		local set = {}
+		
+		set[1] = dataSets[i][1]
+		set[2] = dataSets[i][2] *-2+5
+		set[3] = dataSets[i][3]
+		
+		returnSets[i] = set
 	end
 	
-	return dataSets
+	return returnSets
 end
 
 return formulas

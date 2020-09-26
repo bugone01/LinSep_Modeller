@@ -99,7 +99,9 @@ function ioLib.readFileContents( fileName, path )
 		end 
 end 
 
-function ioLib.__cleanGraphData( fileName, path ) -- This needs to be cleaned up if I get time! : should it get a fullyQualifiedFileName?
+-- Read users file and split into sub-tables, each with x, y and a group reference (used for colour association)
+-- { { x, y, "C" } }
+function ioLib.__parseGraphData( fileName, path )
 	local data = ioLib.readFileContents( fileName, path )
 	local cleaned = {}
 	local sub = {}
@@ -114,9 +116,10 @@ function ioLib.__cleanGraphData( fileName, path ) -- This needs to be cleaned up
 	return cleaned
 end
 
-function ioLib.cleanGraphData( fileName, path )
+	--tis easier to ask forgivness than permission.
+function ioLib.parseGraphData( fileName, path )
 	-- protected call to __cleanGraphData to capture any errors with data format
-	local result, cleaned = pcall( ioLib.__cleanGraphData, fileName, path )
+	local result, cleaned = pcall( ioLib.__parseGraphData, fileName, path )
 	if result == true then
 		return cleaned
 	else
